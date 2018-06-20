@@ -1,0 +1,15 @@
+{
+  "name": "purescript-shutterstock",
+  "set": "df",
+  "source": "https://github.com/paluh/package-sets.git",
+  "depends": [
+    "simple-json",
+    "validators",
+    "affjax",
+    "console",
+    "eff",
+    "parallel",
+    "polyform",
+    "prelude"
+  ]
+}
