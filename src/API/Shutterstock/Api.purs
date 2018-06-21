@@ -4,28 +4,27 @@ import Prelude
 
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Search (Request, toUrlEncoded)
-import API.Shutterstock.Types (Image, ImageType(..), Search)
+import API.Shutterstock.Types (BasicAssets, Image, ImageDetails, Search, Thumb, ProductionImage, DetailsAssets)
 import Control.Monad.Aff (Aff)
+import Control.Monad.State (get)
 import Data.Argonaut (Json)
-import Data.Either (Either(Left), hush)
+import Data.Either (Either(Left))
 import Data.FormURLEncoded (encode)
 import Data.HTTP.Method (Method(..))
-import Data.Lens.Record (prop)
-import Data.List (List)
-import Data.Maybe (Maybe(..))
 import Data.Record.Fold (collect)
-import Data.Tuple (Tuple(..))
-import Data.URI (AbsoluteURI(AbsoluteURI), Authority(Authority), HierarchicalPart(HierarchicalPart), Host(NameAddress), Scheme(Scheme))
 import Data.Variant (Variant)
-import Network.HTTP.Affjax (AJAX, AffjaxRequest, defaultRequest)
+import Network.HTTP.Affjax (AJAX, AffjaxRequest, AffjaxResponse, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Network.HTTP.StatusCode (StatusCode(..))
-import Polyform.Validation (V, Validation, runValidation, toEither)
-import Type.Prelude (SProxy(..))
-import Validators.Affjax (affjaxJson)
-import Validators.Json (JsError, arrayOf, field, int, number, object, string)
+import Polyform.Validation (V, Validation, runValidation)
+import Validators.Affjax (AffjaxErrorRow, HttpErrorRow, JsonErrorRow, affjaxJson)
+import Validators.Json (JsError, arrayOf, field, int, number, string)
 
-
+type SearchErrorRow err = 
+  ( JsonErrorRow
+  ( JsError
+  ( HttpErrorRow
+  ( AffjaxErrorRow err
+  ))))
 
 getResultfromJson 
   :: forall err m
@@ -33,17 +32,17 @@ getResultfromJson
   => Validation m
       (Array (Variant (JsError err)))
       Json
-      (Search Image )
+      (Search Image)
 getResultfromJson = collect
-  {page: field "page" int
+  { page: field "page" int
   , perPage: field "per_page" int
   , totalCount: field "total_count" int
   , searchId: field "search_id" string
   , photos: field "data" $ arrayOf getImagefromJson
   }
 
--- TODO: assets to record
-
+-- TODO: add info about full sizes
+-- TODO: put these json functions somewhere else
 getImagefromJson 
   :: forall err m
    . Monad m
@@ -57,14 +56,59 @@ getImagefromJson = collect
   , imageType: field "image_type" string
   , mediaType: field  "image_type" string
   , aspect: field "aspect" number
-    , assets: field "assets" object  }
+  , assets: field "assets" $ getAssetfromJson}
 
-  -- id ∷ ImageId
-  -- , description ∷ String
-  -- , image_type ∷ String
-  -- , media_type ∷ String
-  -- , aspect ∷ Number
-  -- , assets ∷ Record (AssetsRow a)
+getAssetfromJson 
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      BasicAssets
+getAssetfromJson = collect
+  { preview: field "preview" getThumbfromJson
+  , smallThumb: field "small_thumb" getThumbfromJson
+  , largeThumb: field "large_thumb" getThumbfromJson 
+  }
+
+getAssetsDetailsfromJson
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      DetailsAssets
+getAssetsDetailsfromJson = collect
+  { preview: field "preview" getThumbfromJson
+  , smallThumb: field "small_thumb" getThumbfromJson
+  , largeThumb: field "large_thumb" getThumbfromJson
+  , huge: field "huge_jpg" getDetailPhotofromJson
+  }
+
+getDetailPhotofromJson
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      ProductionImage
+getDetailPhotofromJson = collect
+  { height: field "height" int
+  , width: field "width" int
+  }
+
+getThumbfromJson 
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      Thumb
+getThumbfromJson = collect
+  { height: field "height" int
+  , width: field "width" int
+  , url: field "url" string
+  }
 
 buildRequest :: Request -> AffjaxRequest Unit
 buildRequest r =
@@ -75,9 +119,7 @@ buildRequest r =
     , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
   }
 
-
---Search Image, raw ∷ String })
-search :: forall t292 t293.
+search :: forall t292 err.
   { page :: Int
   , perPage :: Int
   , query :: String
@@ -87,25 +129,17 @@ search :: forall t292 t293.
        | t292
        )
        (V
-          (Array
-             (Variant
-                ( jsError :: { path :: List String
-                             , msg :: String
-                             }
-                , parsingError :: String
-                , remoteError :: String
-                , wrongHttpStatus :: StatusCode
-                | t293
-                )
-             )
-          )
+          (Array (Variant (SearchErrorRow err)))
           (Search Image)
        )
 search req = (runValidation $ getResultfromJson <<< affjaxJson) (buildRequest req)
---      : i "image_type" "photo"
-  -- r ← get req
-  -- pure r
-  -- pure $ (over _result Search) <$> r
+
+buildDetailsRequest :: String -> AffjaxRequest Unit
+buildDetailsRequest id = defaultRequest { 
+    url = "https://api.shutterstock.com/v2/images/" <> id
+    , method = Left GET
+    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
+  }
 
 -- image ∷ ∀ eff. ImageId → Aff (ajax ∷ AJAX | eff) (Maybe { result ∷ ImageDetails, raw ∷ String })
 -- image imageId = do
