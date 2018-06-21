@@ -10,6 +10,7 @@
     "eff",
     "parallel",
     "polyform",
-    "prelude"
+    "prelude",
+    "record-fold"
   ]
 }

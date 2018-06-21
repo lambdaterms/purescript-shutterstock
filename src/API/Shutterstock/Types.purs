@@ -2,10 +2,12 @@ module API.Shutterstock.Types where
 
 import Prelude
 
+import Data.Argonaut (Json)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Lens.Record (prop)
 import Data.Newtype (class Newtype)
+import Data.StrMap (StrMap)
 import Global.Unsafe (unsafeStringify)
 import Simple.JSON (class ReadForeign, class WriteForeign)
 import Type.Prelude (SProxy(SProxy))
@@ -99,47 +101,47 @@ type AssetsRow a =
   | a
   )
 
-type ImageRecord a =
-  { id ∷ ImageId
+type ImageRecord =
+  { id ∷ String --ImageId
   , description ∷ String
-  , image_type ∷ String
-  , media_type ∷ String
+  , imageType ∷ String
+  , mediaType ∷ String
   , aspect ∷ Number
-  , assets ∷ Record (AssetsRow a)
+  , assets ∷ StrMap Json --Record (AssetsRow a)
   }
-newtype Image = Image (ImageRecord ())
-derive instance newtypeImage ∷ Newtype Image _
-derive instance genericImage ∷ Generic Image _
-derive newtype instance writeImage ∷ WriteForeign Image
-derive newtype instance readImage ∷ ReadForeign Image
-derive instance eqImage ∷ Eq Image
--- | Required by purescript-test-unit
-instance showImage ∷ Show Image where
-  show = unsafeStringify
+type Image = ImageRecord
+-- derive instance newtypeImage ∷ Newtype Image _
+-- derive instance genericImage ∷ Generic Image _
+-- derive newtype instance writeImage ∷ WriteForeign Image
+-- derive newtype instance readImage ∷ ReadForeign Image
+-- derive instance eqImage ∷ Eq Image
+-- -- | Required by purescript-test-unit
+-- instance showImage ∷ Show Image where
+--   show = unsafeStringify
 
-newtype ImageDetails = ImageDetails (ImageRecord (huge_jpg ∷ ProductionImage))
-derive instance newtypeImageDetails ∷ Newtype ImageDetails _
-derive instance genericImageDetails ∷ Generic ImageDetails _
-derive newtype instance writeImageDetails ∷ WriteForeign ImageDetails
-derive newtype instance readImageDetails ∷ ReadForeign ImageDetails
-derive instance eqImageDetails ∷ Eq ImageDetails
+-- newtype ImageDetails = ImageDetails (ImageRecord (huge_jpg ∷ ProductionImage))
+-- derive instance newtypeImageDetails ∷ Newtype ImageDetails _
+-- derive instance genericImageDetails ∷ Generic ImageDetails _
+-- derive newtype instance writeImageDetails ∷ WriteForeign ImageDetails
+-- derive newtype instance readImageDetails ∷ ReadForeign ImageDetails
+-- derive instance eqImageDetails ∷ Eq ImageDetails
 -- | Required by purescript-test-unit
-instance showImageDetails ∷ Show ImageDetails where
-  show = unsafeStringify
+-- instance showImageDetails ∷ Show ImageDetails where
+--   show = unsafeStringify
 
-newtype Search image = Search
+type Search image =
   { page ∷ Int
-  , per_page ∷  Int
-  , total_count ∷ Int
-  , search_id ∷ String
-  , data ∷ Array image
+  , perPage ∷  Int
+  , totalCount ∷ Int
+  , searchId ∷ String
+  , photos ∷ Array image
   }
-derive instance newtypeSearch ∷ Newtype (Search image) _
-derive instance genericSearch ∷ Generic (Search image) _
-derive instance eqSearch ∷ Eq image ⇒ Eq (Search image)
-instance showSearch ∷ Show (Search image) where
-  show = unsafeStringify
-derive instance functorSearch ∷ Functor Search
+-- derive instance newtypeSearch ∷ Newtype (Search image) _
+-- derive instance genericSearch ∷ Generic (Search image) _
+-- derive instance eqSearch ∷ Eq image ⇒ Eq (Search image)
+-- instance showSearch ∷ Show (Search image) where
+--   show = unsafeStringify
+-- derive instance functorSearch ∷ Functor Search
 
 
 _images = prop (SProxy ∷ SProxy "data")

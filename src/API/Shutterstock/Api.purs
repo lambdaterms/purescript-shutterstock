@@ -3,88 +3,108 @@ module API.Shutterstock.Api where
 import Prelude
 
 import API.Shutterstock.Key (accessToken)
-import API.Shutterstock.Search (Request(..))
-import API.Shutterstock.Types (Image, ImageDetails(ImageDetails), ImageId, Search(Search))
-import Control.Monad.Aff (Aff, attempt)
-import Control.Parallel (parTraverse)
+import API.Shutterstock.Search (Request, toUrlEncoded)
+import API.Shutterstock.Types (Image, ImageType(..), Search)
+import Control.Monad.Aff (Aff)
 import Data.Argonaut (Json)
-import Data.Array (catMaybes)
 import Data.Either (Either(Left), hush)
+import Data.FormURLEncoded (encode)
 import Data.HTTP.Method (Method(..))
-import Data.Lens (over)
 import Data.Lens.Record (prop)
-import Data.Lens.Setter (set)
-import Data.List (List(Nil), (:))
+import Data.List (List)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
+import Data.Record.Fold (collect)
 import Data.Tuple (Tuple(..))
-import Data.URI (AbsoluteURI(..), Authority(..), HierarchicalPart(..), Host(..), Path(..), Query(..), Scheme(..))
-import Data.URI.AbsoluteURI (_hierPart, _query, print)
-import Data.URI.HierarchicalPart (_path)
-import Network.HTTP.Affjax (AJAX, defaultRequest)
+import Data.URI (AbsoluteURI(AbsoluteURI), Authority(Authority), HierarchicalPart(HierarchicalPart), Host(NameAddress), Scheme(Scheme))
+import Data.Variant (Variant)
+import Network.HTTP.Affjax (AJAX, AffjaxRequest, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Polyform.Validation (runValidation, toEither)
-import Simple.JSON (class ReadForeign, readJSON)
+import Network.HTTP.StatusCode (StatusCode(..))
+import Polyform.Validation (V, Validation, runValidation, toEither)
 import Type.Prelude (SProxy(..))
-import Validators.Affjax (affjax, affjaxJson)
+import Validators.Affjax (affjaxJson)
+import Validators.Json (JsError, arrayOf, field, int, number, object, string)
 
-apiEndpoint ∷ AbsoluteURI
-apiEndpoint =
-  (AbsoluteURI
-     (Scheme "https")
-     (HierarchicalPart
-        (Just
-           (Authority
-              Nothing
-              [(Tuple (NameAddress "api.shutterstock.com") Nothing)]))
-        Nothing)
-      Nothing)
 
-get :: forall t52.
-  Path
-                     -> Maybe Query
-                        -> Aff
-                             ( ajax :: AJAX
-                             | t52
-                             )
-                             (Maybe
-                                { result :: Json
-                                , raw :: String
-                                }
-                             )
-get path query = do
-  let
-    url = print $ set (_path >>> _hierPart) (Just path) >>> set _query query $ apiEndpoint
-    request = defaultRequest
-      { url = url
-      , method = Left GET
-      , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ]
-      }
-  -- r ← attempt (affjax request)
-  r <- hush <$> toEither <$> (runValidation affjaxJson) request
-  pure $  r >>= (\x -> Just { result: x, raw: "no raw" })
 
-_result = prop (SProxy ∷ SProxy "result")
+getResultfromJson 
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      (Search Image )
+getResultfromJson = collect
+  {page: field "page" int
+  , perPage: field "per_page" int
+  , totalCount: field "total_count" int
+  , searchId: field "search_id" string
+  , photos: field "data" $ arrayOf getImagefromJson
+  }
 
-search :: forall t82.
-   Request
-   -> Aff
-        ( ajax :: AJAX
-        | t82
-        )
-        (Maybe { result ∷ Json, raw:: String})--Search Image, raw ∷ String })
-search ({ query, page, perPage }) = do
-  let
-    i n v = Tuple n (Just v)
-    q
-      = (i "query" query)
-      : i "per_page" (show perPage)
-      : i "page" (show page)
-      : i "image_type" "photo"
-      : Nil
+-- TODO: assets to record
 
-  r ← get (Path "/v2/images/search") (Just (Query q))
-  pure r
+getImagefromJson 
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      Image
+getImagefromJson = collect
+  { id: field "id" string
+  , description: field "description" string
+  , imageType: field "image_type" string
+  , mediaType: field  "image_type" string
+  , aspect: field "aspect" number
+    , assets: field "assets" object  }
+
+  -- id ∷ ImageId
+  -- , description ∷ String
+  -- , image_type ∷ String
+  -- , media_type ∷ String
+  -- , aspect ∷ Number
+  -- , assets ∷ Record (AssetsRow a)
+
+buildRequest :: Request -> AffjaxRequest Unit
+buildRequest r =
+  let url = r # toUrlEncoded # encode
+  in defaultRequest { 
+    url = "https://api.shutterstock.com/v2/images/search?" <> url
+    , method = Left GET
+    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
+  }
+
+
+--Search Image, raw ∷ String })
+search :: forall t292 t293.
+  { page :: Int
+  , perPage :: Int
+  , query :: String
+  }
+  -> Aff
+       ( ajax :: AJAX
+       | t292
+       )
+       (V
+          (Array
+             (Variant
+                ( jsError :: { path :: List String
+                             , msg :: String
+                             }
+                , parsingError :: String
+                , remoteError :: String
+                , wrongHttpStatus :: StatusCode
+                | t293
+                )
+             )
+          )
+          (Search Image)
+       )
+search req = (runValidation $ getResultfromJson <<< affjaxJson) (buildRequest req)
+--      : i "image_type" "photo"
+  -- r ← get req
+  -- pure r
   -- pure $ (over _result Search) <$> r
 
 -- image ∷ ∀ eff. ImageId → Aff (ajax ∷ AJAX | eff) (Maybe { result ∷ ImageDetails, raw ∷ String })
