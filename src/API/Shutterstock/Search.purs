@@ -1,6 +1,6 @@
 module API.Shutterstock.Search where
 
-newtype Request = Request
+type Request =
   { page :: Int
   , perPage :: Int
   , query :: String

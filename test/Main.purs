@@ -2,7 +2,7 @@ module Test.Main where
   
 import Prelude
 
-import API.Shutterstock.Api (search, searchAndRetrieve)
+import API.Shutterstock.Api (search)--, searchAndRetrieve)
 import API.Shutterstock.Search (Request(..))
 import Control.Monad.Aff (Fiber, launchAff)
 import Control.Monad.Aff.Console (log)
@@ -12,7 +12,7 @@ import Global.Unsafe (unsafeStringify)
 import Network.HTTP.Affjax (AJAX)
 
 simpleRequest :: Request
-simpleRequest = Request
+simpleRequest =
   { page: 1
   , perPage: 15
   , query: "dog"
@@ -25,5 +25,5 @@ main
 main = launchAff $ do 
   res1 <- (unsafeStringify <$> search simpleRequest)
   log res1
-  res2 <- (unsafeStringify <$> searchAndRetrieve simpleRequest)
-  log res2
+--   res2 <- (unsafeStringify <$> searchAndRetrieve simpleRequest)
+--   log res2
