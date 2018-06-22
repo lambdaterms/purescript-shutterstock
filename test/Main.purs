@@ -2,7 +2,7 @@ module Test.Main where
   
 import Prelude
 
-import API.Shutterstock.Api (getResultfromJson, search, buildRequest)
+import API.Shutterstock.Api (buildRequest, getResultfromJson, search, searchAndRetrieve)
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Search (Request(..))
 import Control.Monad.Aff (Fiber, launchAff)
@@ -40,5 +40,5 @@ main = launchAff $ do
 
   res1 <- (unsafeStringify <$> search simpleRequest)
   log res1
---   res2 <- (unsafeStringify <$> searchAndRetrieve simpleRequest)
---   log res2
+  res2 <- (unsafeStringify <$> searchAndRetrieve simpleRequest)
+  log res2
