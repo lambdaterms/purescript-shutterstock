@@ -3,17 +3,19 @@ module API.Shutterstock.Api where
 import Prelude
 
 import API.Shutterstock.Key (accessToken)
-import API.Shutterstock.Types (BasicAssets, Image, ImageDetails, Search, Thumb, ProductionImage, DetailsAssets, Request, toUrlEncoded)
+import API.Shutterstock.Types (BasicAssets, Image, ImageDetails, Search, Thumb, Detail, DetailsAssets, Request)
 import Control.Monad.Aff (Aff)
 import Control.Parallel (parTraverse)
 import Data.Argonaut (Json)
 import Data.Array (filter)
 import Data.Either (Either(Left))
-import Data.FormURLEncoded (encode)
+import Data.FormURLEncoded (FormURLEncoded, encode, fromArray)
 import Data.HTTP.Method (Method(..))
+import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid)
 import Data.Record.Fold (collect)
 import Data.Traversable (sequence)
+import Data.Tuple (Tuple(..))
 import Data.Variant (Variant)
 import Network.HTTP.Affjax (AJAX, AffjaxRequest, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
@@ -27,6 +29,13 @@ type SearchErrorRow err =
   ( HttpErrorRow
   ( AffjaxErrorRow err
   ))))
+
+toUrlEncoded :: Request -> FormURLEncoded
+toUrlEncoded {query, page, perPage} = fromArray
+  [ Tuple "query" (Just query)
+  , Tuple "per_page" (Just $ show perPage)
+  , Tuple "page" (Just $ show page)
+  ]
 
 getResultfromJson 
   :: forall err m
@@ -43,7 +52,6 @@ getResultfromJson = collect
   , photos: field "data" $ arrayOf getImagefromJson
   }
 
--- TODO: add info about full sizes
 -- TODO: put these json functions somewhere else
 getImageWithDetailsfromJson 
   :: forall err m
@@ -59,7 +67,6 @@ getImageWithDetailsfromJson = collect
   , mediaType: field  "image_type" string
   , aspect: field "aspect" number
   , assets: field "assets" $ getAssetsDetailsfromJson}
-
 
 getImagefromJson 
   :: forall err m
@@ -109,7 +116,7 @@ getDetailfromJson
   => Validation m
       (Array (Variant (JsError err)))
       Json
-      ProductionImage
+      Detail
 getDetailfromJson = collect
   { height: field "height" int
   , width: field "width" int
@@ -172,14 +179,14 @@ retrieve = getImageWithDetailsfromJson <<< affjaxJson
 catV :: forall t err. Monoid err => Array (V err t) -> V err (Array t)
 catV = sequence <<< filter (case _ of 
   Valid _ _ -> true
-  otherwise -> false) 
+  otherwise -> false)
 
 getCatVDetails 
-  :: forall t ext
+  :: forall t err
    . Array String
   -> Aff ( ajax :: AJAX | t)
       (V
-       (Array(Variant(SearchErrorRow ext)))
+       (Array (Variant (SearchErrorRow err)))
        (Array ImageDetails)
       )
 getCatVDetails ids = catV <$> parTraverse getDetails ids
@@ -190,7 +197,7 @@ searchAndRetrieveValidation
   :: forall ext err
    . Validation
       ( Aff( ajax :: AJAX| ext))
-      (Array(Variant(SearchErrorRow err)))
+      (Array (Variant (SearchErrorRow err)))
       (AffjaxRequest Unit)
       (Array ImageDetails)
 searchAndRetrieveValidation = 

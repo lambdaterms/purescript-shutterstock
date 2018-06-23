@@ -1,26 +1,12 @@
 module API.Shutterstock.Types where
 
-import Prelude
-
-import Data.FormURLEncoded (FormURLEncoded(..), fromArray)
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
-import Data.Tuple (Tuple(..))
-import Simple.JSON (class ReadForeign, class WriteForeign)
-
 type Url = String
 
 type DetailsRow ext = ( height ∷ Int, width ∷ Int | ext )
 type Thumb = Record(DetailsRow(url ∷ Url))
+type Detail = Record(DetailsRow ())
 
-type ProductionImage = Record(DetailsRow ())
-
-data ImageType = Photo | Illustration | Vector
-
-data Format = Jpeg
-
+-- Assets types
 type AssetsRow a =
   ( largeThumb ∷ Thumb
   , preview ∷ Thumb
@@ -28,8 +14,9 @@ type AssetsRow a =
   | a
   )
 type BasicAssets = Record(AssetsRow ())
-type DetailsAssets = Record(AssetsRow( huge :: ProductionImage))
+type DetailsAssets = Record(AssetsRow( huge :: Detail))
 
+-- Image description types
 type ImageRow ext =
   ( id ∷ String
   , description ∷ String
@@ -38,10 +25,10 @@ type ImageRow ext =
   , aspect ∷ Number
   , assets ∷ Record (AssetsRow ext)
   )
-
 type Image = Record(ImageRow ())
-type ImageDetails = Record( ImageRow( huge :: ProductionImage))
+type ImageDetails = Record( ImageRow( huge :: Detail))
 
+-- search response with array of images as param
 type Search image =
   { page ∷ Int
   , perPage ∷  Int
@@ -55,11 +42,3 @@ type Request =
   , perPage :: Int
   , query :: String
   }
-
-
-toUrlEncoded :: Request -> FormURLEncoded
-toUrlEncoded {query, page, perPage} = fromArray
-  [ Tuple "query" (Just query)
-  , Tuple "per_page" (Just $ show perPage)
-  , Tuple "page" (Just $ show page)
-  ]

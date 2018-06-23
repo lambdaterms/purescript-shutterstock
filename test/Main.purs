@@ -2,7 +2,7 @@ module Test.Main where
   
 import Prelude
 
-import API.Shutterstock.Api (buildRequest, getResultfromJson, search, searchAndRetrieve)
+import API.Shutterstock.Api (search, searchAndRetrieve)
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Types (Request)
 import Control.Monad.Aff (Fiber, launchAff)
@@ -14,8 +14,6 @@ import Data.HTTP.Method (Method(..))
 import Global.Unsafe (unsafeStringify)
 import Network.HTTP.Affjax (AJAX, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
-import Polyform.Validation (runValidation)
-import Validators.Affjax (affjaxJson)
 
 simpleRequest :: Request
 simpleRequest =
