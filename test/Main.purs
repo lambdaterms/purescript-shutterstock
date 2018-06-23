@@ -4,7 +4,7 @@ import Prelude
 
 import API.Shutterstock.Api (buildRequest, getResultfromJson, search, searchAndRetrieve)
 import API.Shutterstock.Key (accessToken)
-import API.Shutterstock.Search (Request(..))
+import API.Shutterstock.Types (Request)
 import Control.Monad.Aff (Fiber, launchAff)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Eff (Eff)

@@ -2,28 +2,13 @@ module API.Shutterstock.Types where
 
 import Prelude
 
+import Data.FormURLEncoded (FormURLEncoded(..), fromArray)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Tuple (Tuple(..))
 import Simple.JSON (class ReadForeign, class WriteForeign)
-
-newtype SearchId = SearchId String
-derive instance newtypeSearchId ∷ Newtype SearchId _
-derive instance genericSearchId ∷ Generic SearchId _
-derive instance eqSearchId ∷ Eq SearchId
-derive instance ordSearchId ∷ Ord SearchId
-instance showSearchId ∷ Show SearchId where
-  show = genericShow
-
-newtype ImageId = ImageId String
-derive instance newtypeImageId ∷ Newtype ImageId _
-derive instance genericImageId ∷ Generic ImageId _
-derive newtype instance readForeignImageId ∷ ReadForeign ImageId
-derive newtype instance writeForeignImageId ∷ WriteForeign ImageId
-derive instance eqImageId ∷ Eq ImageId
-derive instance ordImageId ∷ Ord ImageId
-instance showImageId ∷ Show ImageId where
-  show = genericShow
 
 type Url = String
 
@@ -46,7 +31,7 @@ type BasicAssets = Record(AssetsRow ())
 type DetailsAssets = Record(AssetsRow( huge :: ProductionImage))
 
 type ImageRow ext =
-  ( id ∷ String --ImageId
+  ( id ∷ String
   , description ∷ String
   , imageType ∷ String
   , mediaType ∷ String
@@ -64,3 +49,17 @@ type Search image =
   , searchId ∷ String
   , photos ∷ Array image
   }
+
+type Request =
+  { page :: Int
+  , perPage :: Int
+  , query :: String
+  }
+
+
+toUrlEncoded :: Request -> FormURLEncoded
+toUrlEncoded {query, page, perPage} = fromArray
+  [ Tuple "query" (Just query)
+  , Tuple "per_page" (Just $ show perPage)
+  , Tuple "page" (Just $ show page)
+  ]

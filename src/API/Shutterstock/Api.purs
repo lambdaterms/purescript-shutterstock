@@ -3,28 +3,21 @@ module API.Shutterstock.Api where
 import Prelude
 
 import API.Shutterstock.Key (accessToken)
-import API.Shutterstock.Search (Request, toUrlEncoded)
-import API.Shutterstock.Types (BasicAssets, Image, ImageDetails, Search, Thumb, ProductionImage, DetailsAssets)
+import API.Shutterstock.Types (BasicAssets, Image, ImageDetails, Search, Thumb, ProductionImage, DetailsAssets, Request, toUrlEncoded)
 import Control.Monad.Aff (Aff)
-import Control.Monad.State (get)
 import Control.Parallel (parTraverse)
-import DOM.HTML.HTMLElement (offsetWidth)
 import Data.Argonaut (Json)
-import Data.Array (filter, zip, zipWith)
+import Data.Array (filter)
 import Data.Either (Either(Left))
 import Data.FormURLEncoded (encode)
 import Data.HTTP.Method (Method(..))
 import Data.Monoid (class Monoid)
-import Data.Record (insert)
 import Data.Record.Fold (collect)
 import Data.Traversable (sequence)
-import Data.Tuple (Tuple(..))
-import Data.Variant (SProxy(..), Variant)
-import Debug.Trace (traceAnyA, traceAnyM)
-import Network.HTTP.Affjax (AJAX, AffjaxRequest, AffjaxResponse, defaultRequest)
+import Data.Variant (Variant)
+import Network.HTTP.Affjax (AJAX, AffjaxRequest, defaultRequest)
 import Network.HTTP.RequestHeader (RequestHeader(..))
 import Polyform.Validation (V(..), Validation, hoistFn, hoistFnMV, runValidation)
-import Type.Data.Boolean (True)
 import Validators.Affjax (AffjaxErrorRow, HttpErrorRow, JsonErrorRow, affjaxJson)
 import Validators.Json (JsError, arrayOf, field, int, number, string)
 
@@ -52,6 +45,22 @@ getResultfromJson = collect
 
 -- TODO: add info about full sizes
 -- TODO: put these json functions somewhere else
+getImageWithDetailsfromJson 
+  :: forall err m
+   . Monad m
+  => Validation m
+      (Array (Variant (JsError err)))
+      Json
+      ImageDetails
+getImageWithDetailsfromJson = collect
+  { id: field "id" string
+  , description: field "description" string
+  , imageType: field "image_type" string
+  , mediaType: field  "image_type" string
+  , aspect: field "aspect" number
+  , assets: field "assets" $ getAssetsDetailsfromJson}
+
+
 getImagefromJson 
   :: forall err m
    . Monad m
@@ -91,17 +100,17 @@ getAssetsDetailsfromJson = collect
   { preview: field "preview" getThumbfromJson
   , smallThumb: field "small_thumb" getThumbfromJson
   , largeThumb: field "large_thumb" getThumbfromJson
-  , huge: field "huge_jpg" getDetailPhotofromJson
+  , huge: field "huge_jpg" getDetailfromJson
   }
 
-getDetailPhotofromJson
+getDetailfromJson
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       ProductionImage
-getDetailPhotofromJson = collect
+getDetailfromJson = collect
   { height: field "height" int
   , width: field "width" int
   }
@@ -122,18 +131,27 @@ getThumbfromJson = collect
 buildRequest :: Request -> AffjaxRequest Unit
 buildRequest r =
   let url = r # toUrlEncoded # encode
-  in defaultRequest { 
+  in defaultRequest {
     url = "https://api.shutterstock.com/v2/images/search?" <> url
     , method = Left GET
     , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
   }
 
+searchValidation
+  :: forall ext err
+   . Validation
+      ( Aff( ajax :: AJAX| ext))
+      (Array(Variant(SearchErrorRow err)))
+      (AffjaxRequest Unit)
+      (Search Image)
+searchValidation = getResultfromJson <<< affjaxJson
+
 search 
-  :: forall t292 err
+  :: forall t err
    . Request
-  -> Aff ( ajax :: AJAX| t292)
+  -> Aff ( ajax :: AJAX| t)
       (V (Array (Variant (SearchErrorRow err))) (Search Image))
-search req = (runValidation $ getResultfromJson <<< affjaxJson) (buildRequest req)
+search req = (runValidation searchValidation) (buildRequest req)
 
 buildDetailsRequest :: String -> AffjaxRequest Unit
 buildDetailsRequest id = defaultRequest { 
@@ -142,41 +160,52 @@ buildDetailsRequest id = defaultRequest {
     , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
   }
 
-retrieve :: forall ext err.
-  Validation
-    ( Aff( ajax :: AJAX| ext))
-    (Array(Variant(SearchErrorRow err)))
-    (AffjaxRequest Unit)
-    ProductionImage
-retrieve = (getDetailPhotofromJson <<< affjaxJson)
+retrieve 
+  :: forall ext err
+   . Validation
+      ( Aff( ajax :: AJAX| ext))
+      (Array(Variant(SearchErrorRow err)))
+      (AffjaxRequest Unit)
+      ImageDetails
+retrieve = getImageWithDetailsfromJson <<< affjaxJson
 
 catV :: forall t err. Monoid err => Array (V err t) -> V err (Array t)
 catV = sequence <<< filter (case _ of 
   Valid _ _ -> true
   otherwise -> false) 
 
-addDetailsToArray array = do
-  a'<-parTraverse getDetails (map _.id array)
-  pure $ catV (zipWith addImageDetails array a')
+getCatVDetails 
+  :: forall t ext
+   . Array String
+  -> Aff ( ajax :: AJAX | t)
+      (V
+       (Array(Variant(SearchErrorRow ext)))
+       (Array ImageDetails)
+      )
+getCatVDetails ids = catV <$> parTraverse getDetails ids
   where
-  getDetails id = runValidation retrieve (buildDetailsRequest id)
+    getDetails id = runValidation retrieve (buildDetailsRequest id)
 
-addImageDetails :: Image -> V _ _ -> _
-addImageDetails photo = map (\details -> photo{assets = insert (SProxy::SProxy "huge") details photo.assets})
-
-
+searchAndRetrieveValidation
+  :: forall ext err
+   . Validation
+      ( Aff( ajax :: AJAX| ext))
+      (Array(Variant(SearchErrorRow err)))
+      (AffjaxRequest Unit)
+      (Array ImageDetails)
 searchAndRetrieveValidation = 
-  (hoistFnMV addDetailsToArray) 
-  <<< hoistFn (_.photos) 
-  <<< getResultfromJson 
-  <<< affjaxJson
+  hoistFnMV getCatVDetails
+  <<< hoistFn getIds 
+  <<< searchValidation
+  where
+    getIds = map _.id <<< _.photos
 
+searchAndRetrieve 
+  :: forall err ext
+   . Request
+  -> Aff (ajax :: AJAX | ext)
+      (V
+        (Array (Variant (SearchErrorRow err)))
+        (Array ImageDetails)
+      )
 searchAndRetrieve req = runValidation searchAndRetrieveValidation (buildRequest req)
-
--- searchAndRetrieve req = do
---   let search = (hoistFn(map _.photos) <<< getResultfromJson <<< affjaxJson)
---   (vPhotos::_) <- (map _.photos) <$> (search req)
---   vPhotos
---   pure vPhotos
-  
- -- ((\y-> parTraverse  y)) <$> vPhotos
