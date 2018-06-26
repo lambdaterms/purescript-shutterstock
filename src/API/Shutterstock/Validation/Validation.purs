@@ -2,9 +2,10 @@ module API.Shutterstock.Validation.Validation where
 
 import Prelude
 
-import API.Shutterstock.Validation.Json (getImageWithDetailsfromJson, getResultfromJson)
 import API.Shutterstock.Key (accessToken)
-import API.Shutterstock.Types (Image, ImageDetails, Request, Search)
+import API.Shutterstock.Requests (details, request)
+import API.Shutterstock.Types (Image, ImageDetails, Request, SearchResult)
+import API.Shutterstock.Validation.Json (imageWithDetails, searchResult, searchResult)
 import Control.Monad.Aff (Aff)
 import Control.Parallel (parTraverse)
 import Data.Array (filter)
@@ -36,30 +37,14 @@ toUrlEncoded {query, page, perPage} = fromArray
   , Tuple "page" (Just $ show page)
   ]
 
-buildRequest :: Request -> AffjaxRequest Unit
-buildRequest r =
-  let url = r # toUrlEncoded # encode
-  in defaultRequest {
-    url = "https://api.shutterstock.com/v2/images/search?" <> url
-    , method = Left GET
-    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
-  }
-
-buildDetailsRequest :: String -> AffjaxRequest Unit
-buildDetailsRequest id = defaultRequest { 
-    url = "https://api.shutterstock.com/v2/images/" <> id
-    , method = Left GET
-    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
-  }
-
 searchValidation
   :: forall ext err
    . Validation
       ( Aff( ajax :: AJAX| ext))
       (Array(Variant(SearchErrorRow err)))
       (AffjaxRequest Unit)
-      (Search Image)
-searchValidation = getResultfromJson <<< affjaxJson
+      (SearchResult Image)
+searchValidation = searchResult <<< affjaxJson
 
 retrieve 
   :: forall ext err
@@ -68,7 +53,7 @@ retrieve
       (Array(Variant(SearchErrorRow err)))
       (AffjaxRequest Unit)
       ImageDetails
-retrieve = getImageWithDetailsfromJson <<< affjaxJson
+retrieve = imageWithDetails <<< affjaxJson
 
 catV :: forall t err. Monoid err => Array (V err t) -> V err (Array t)
 catV = sequence <<< filter (case _ of 
@@ -85,7 +70,7 @@ getCatVDetails
       )
 getCatVDetails ids = catV <$> parTraverse getDetails ids
   where
-    getDetails id = runValidation retrieve (buildDetailsRequest id)
+    getDetails id = runValidation retrieve (details id)
 
 searchAndRetrieveValidation
   :: forall ext err

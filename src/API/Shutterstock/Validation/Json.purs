@@ -2,105 +2,105 @@ module API.Shutterstock.Validation.Json where
 
 import Prelude
 
-import API.Shutterstock.Types (BasicAssets, Detail, DetailsAssets, Image, ImageDetails, Search, Thumb)
+import API.Shutterstock.Types (BasicAssets, Detail, DetailsAssets, Image, ImageDetails, Thumb, SearchResult)
 import Data.Argonaut (Json)
 import Data.Record.Fold (collect)
 import Data.Variant (Variant)
 import Polyform.Validation (Validation)
 import Validators.Json (JsError, arrayOf, field, int, number, string)
 
-getResultfromJson 
+searchResult
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
-      (Search Image)
-getResultfromJson = collect
+      (SearchResult Image)
+searchResult = collect
   { page: field "page" int
   , perPage: field "per_page" int
   , totalCount: field "total_count" int
   , searchId: field "search_id" string
-  , photos: field "data" $ arrayOf getImagefromJson
+  , photos: field "data" $ arrayOf image
   }
 
-getImageWithDetailsfromJson 
+imageWithDetails 
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       ImageDetails
-getImageWithDetailsfromJson = collect
+imageWithDetails = collect
   { id: field "id" string
   , description: field "description" string
   , imageType: field "image_type" string
   , mediaType: field  "image_type" string
   , aspect: field "aspect" number
-  , assets: field "assets" $ getAssetsDetailsfromJson}
+  , assets: field "assets" $ assetsDetails}
 
-getImagefromJson 
+image 
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       Image
-getImagefromJson = collect
+image = collect
   { id: field "id" string
   , description: field "description" string
   , imageType: field "image_type" string
   , mediaType: field  "image_type" string
   , aspect: field "aspect" number
-  , assets: field "assets" $ getAssetfromJson}
+  , assets: field "assets" $ asset}
 
-getAssetfromJson 
+asset 
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       BasicAssets
-getAssetfromJson = collect
-  { preview: field "preview" getThumbfromJson
-  , smallThumb: field "small_thumb" getThumbfromJson
-  , largeThumb: field "large_thumb" getThumbfromJson 
+asset = collect
+  { preview: field "preview" thumb
+  , smallThumb: field "small_thumb" thumb
+  , largeThumb: field "large_thumb" thumb 
   }
 
-getAssetsDetailsfromJson
+assetsDetails
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       DetailsAssets
-getAssetsDetailsfromJson = collect
-  { preview: field "preview" getThumbfromJson
-  , smallThumb: field "small_thumb" getThumbfromJson
-  , largeThumb: field "large_thumb" getThumbfromJson
-  , huge: field "huge_jpg" getDetailfromJson
+assetsDetails = collect
+  { preview: field "preview" thumb
+  , smallThumb: field "small_thumb" thumb
+  , largeThumb: field "large_thumb" thumb
+  , huge: field "huge_jpg" detail
   }
 
-getDetailfromJson
+detail
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       Detail
-getDetailfromJson = collect
+detail = collect
   { height: field "height" int
   , width: field "width" int
   }
 
-getThumbfromJson 
+thumb 
   :: forall err m
    . Monad m
   => Validation m
       (Array (Variant (JsError err)))
       Json
       Thumb
-getThumbfromJson = collect
+thumb = collect
   { height: field "height" int
   , width: field "width" int
   , url: field "url" string

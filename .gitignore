@@ -7,3 +7,7 @@
 /.psc*
 /.purs*
 /.psa*
+src/API/Shutterstock/Key.purs
+test/json
+.vscode/tasks.json
+.gitignore

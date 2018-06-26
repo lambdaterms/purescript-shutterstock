@@ -29,7 +29,7 @@ type Image = Record(ImageRow ())
 type ImageDetails = Record( ImageRow( huge :: Detail))
 
 -- search response with array of images as param
-type Search image =
+type SearchResult image =
   { page ∷ Int
   , perPage ∷  Int
   , totalCount ∷ Int
