@@ -34,3 +34,19 @@ details id = defaultRequest {
     , method = Left GET
     , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
   }
+
+download :: String -> AffjaxRequest Unit
+download id = defaultRequest { 
+    url = "https://api.shutterstock.com/v2/images/licenses/" <> id <> "/downloads"
+    , method = Left POST
+    --, content = Just " "
+    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
+  }
+
+license ::  String -> String -> AffjaxRequest String
+license id size = defaultRequest { 
+    url = "https://api.shutterstock.com/v2/images/licenses/"
+    , method = Left POST
+    , content = Just "{\"id\": id}"
+    , headers = [ RequestHeader "Authorization" ("Bearer " <> accessToken) ] 
+  }
