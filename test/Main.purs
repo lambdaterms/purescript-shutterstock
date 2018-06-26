@@ -2,7 +2,7 @@ module Test.Main where
   
 import Prelude
 
-import API.Shutterstock.Api (search, searchAndRetrieve)
+import API.Shutterstock.Methods (search, searchAndRetrieve)
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Types (Request)
 import Control.Monad.Aff (Fiber, launchAff)

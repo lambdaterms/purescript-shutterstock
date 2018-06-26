@@ -1,5 +1,4 @@
-module API.Shutterstock.Json where
-
+module API.Shutterstock.Validation.Json where
 
 import Prelude
 

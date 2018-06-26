@@ -4,7 +4,7 @@ import Prelude
 
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Types (Image, ImageDetails, Request, Search)
-import API.Shutterstock.Validation (searchAndRetrieveValidation, searchValidation)
+import API.Shutterstock.Validation.Validation (searchAndRetrieveValidation, searchValidation)
 import Control.Monad.Aff (Aff)
 import Data.Either (Either(Left))
 import Data.FormURLEncoded (FormURLEncoded, encode, fromArray)
@@ -32,8 +32,8 @@ toUrlEncoded {query, page, perPage} = fromArray
   , Tuple "page" (Just $ show page)
   ]
 
-buildSearchRequest :: Request -> AffjaxRequest Unit
-buildSearchRequest r =
+buildRequest :: Request -> AffjaxRequest Unit
+buildRequest r =
   let url = r # toUrlEncoded # encode
   in defaultRequest {
     url = "https://api.shutterstock.com/v2/images/search?" <> url
@@ -56,7 +56,7 @@ search
       (V
         (Array (Variant (SearchErrorRow err))) 
         (Search Image))
-search req = (runValidation searchValidation) (buildSearchRequest req)
+search req = (runValidation searchValidation) (buildRequest req)
 
 searchAndRetrieve 
   :: forall err ext
@@ -66,4 +66,4 @@ searchAndRetrieve
         (Array (Variant (SearchErrorRow err)))
         (Array ImageDetails)
       )
-searchAndRetrieve req = runValidation searchAndRetrieveValidation (buildSearchRequest req)
+searchAndRetrieve req = runValidation searchAndRetrieveValidation (buildRequest req)

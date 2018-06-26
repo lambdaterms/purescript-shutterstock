@@ -1,8 +1,8 @@
-module API.Shutterstock.Validation where
+module API.Shutterstock.Validation.Validation where
 
 import Prelude
 
-import API.Shutterstock.Json (getImageWithDetailsfromJson, getResultfromJson)
+import API.Shutterstock.Validation.Json (getImageWithDetailsfromJson, getResultfromJson)
 import API.Shutterstock.Key (accessToken)
 import API.Shutterstock.Types (Image, ImageDetails, Request, Search)
 import Control.Monad.Aff (Aff)
