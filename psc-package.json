@@ -3,14 +3,16 @@
   "set": "df",
   "source": "https://github.com/paluh/package-sets.git",
   "depends": [
+    "psci-support",
     "simple-json",
-    "validators",
+    "polyform-validators",
     "affjax",
     "console",
     "eff",
     "parallel",
     "polyform",
     "prelude",
-    "record-fold"
+    "record-fold",
+    "debug"
   ]
 }

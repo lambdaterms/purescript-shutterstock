@@ -42,3 +42,18 @@ type Request =
   , perPage :: Int
   , query :: String
   }
+
+type License = 
+  { images:: Array ImageLicense
+  }
+type ImageLicense = 
+  { image_id :: String
+  , format:: String --jpg
+  , size:: String -- huge,
+  , subscription_id:: String
+  }
+
+type DownloadImage = 
+  { id :: String
+  , size :: String
+  }
